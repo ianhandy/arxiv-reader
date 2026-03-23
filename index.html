@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>arXiv Reader — Beautiful Scientific Paper Browser</title>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #1A0D00;
+  --bg-card: #241200;
+  --bg-hover: #2E1800;
+  --bg-input: #1A0D00;
+  --gold: #DDC165;
+  --gold-light: #FFE9A3;
+  --gold-dim: #99854A;
+  --orange: #E5591C;
+  --orange-glow: rgba(229, 89, 28, 0.3);
+  --text: #E8D5B8;
+  --text-dim: #9A8B77;
+  --text-bright: #FFF5E6;
+  --border: #3A2A18;
+  --border-light: #4A3A28;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: 0.2s ease;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --glow-gold: 0 0 20px rgba(221,193,101,0.15);
+  --glow-orange: 0 0 20px rgba(229,89,28,0.2);
+}
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg-deep);
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(221,193,101,0.03) 0%, transparent 60%);
+  color: var(--text);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* Header */
+header {
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-deep) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.logo {
+  font-family: 'Georgia', serif;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(221,193,101,0.3);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.logo:hover { text-shadow: 0 0 40px rgba(221,193,101,0.5); }
+
+.logo span {
+  color: var(--orange);
+  font-style: italic;
+}
+
+/* Search */
+.search-container {
+  flex: 1;
+  min-width: 280px;
+  position: relative;
+}
+
+.search-bar {
+  width: 100%;
+  display: flex;
+  gap: 0;
+  position: relative;
+}
+
+.search-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: var(--radius) 0 0 var(--radius);
+  padding: 0.7rem 1rem 0.7rem 2.5rem;
+  color: var(--text-bright);
+  font-family: 'Georgia', serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: var(--transition);
+}
+
+.search-input::placeholder { color: var(--text-dim); }
+
+.search-input:focus {
+  border-color: var(--gold-dim);
+  box-shadow: 0 0 0 2px rgba(221,193,101,0.1);
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, var(--orange) 0%, #C44A15 100%);
+  border: 1px solid var(--orange);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 0.7rem 1.2rem;
+  color: var(--text-bright);
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.search-btn:hover {
+  background: linear-gradient(135deg, #F06A2C 0%, var(--orange) 100%);
+  box-shadow: var(--glow-orange);
+}
+
+/* Category pills */
+.categories {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.cat-pill {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.75rem;
+  font-family: system-ui, sans-serif;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.cat-pill:hover, .cat-pill.active {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: rgba(221,193,101,0.08);
+}
+
+/* Sort bar */
+.sort-bar {
+  max-width: 1200px;
+  margin: 1rem auto;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.result-count {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-family: system-ui, sans-serif;
+}
+
+.sort-options {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.sort-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-family: system-ui, sans-serif;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.sort-btn:hover { color: var(--text); }
+.sort-btn.active {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: rgba(221,193,101,0.06);
+}
+
+/* Main content */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.5rem 2rem 4rem;
+}
+
+/* Paper list */
+.paper-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.paper-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.paper-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--gold-dim);
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.paper-card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.paper-card:hover::before { opacity: 1; }
+
+.paper-meta {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.paper-category {
+  background: rgba(229,89,28,0.15);
+  color: var(--orange);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.paper-date {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-family: system-ui, sans-serif;
+}
+
+.paper-id {
+  color: var(--gold-dim);
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+}
+
+.paper-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--gold-light);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  transition: var(--transition);
+}
+
+.paper-card:hover .paper-title { color: var(--gold); text-shadow: 0 0 20px rgba(221,193,101,0.15); }
+
+.paper-authors {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 0.7rem;
+  font-style: italic;
+}
+
+.paper-abstract {
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.paper-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.paper-action-btn {
+  background: rgba(221,193,101,0.08);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  font-family: system-ui, sans-serif;
+  color: var(--gold-dim);
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.paper-action-btn:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: rgba(221,193,101,0.12);
+}
+
+/* Detail view */
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.detail-overlay.visible { display: flex; opacity: 1; }
+
+.detail-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(720px, 90vw);
+  background: var(--bg-deep);
+  border-left: 1px solid var(--border);
+  z-index: 201;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -8px 0 40px rgba(0,0,0,0.5);
+}
+
+.detail-panel.open { transform: translateX(0); }
+
+.detail-close {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(180deg, var(--bg-card) 0%, transparent 100%);
+  z-index: 1;
+}
+
+.close-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: system-ui, sans-serif;
+  transition: var(--transition);
+}
+
+.close-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+.detail-content { padding: 0 2rem 3rem; }
+
+.detail-category {
+  display: inline-block;
+  background: rgba(229,89,28,0.15);
+  color: var(--orange);
+  padding: 0.25rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.detail-title {
+  font-size: 1.6rem;
+  color: var(--gold-light);
+  line-height: 1.4;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 30px rgba(221,193,101,0.1);
+}
+
+.detail-authors {
+  color: var(--text);
+  font-style: italic;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.detail-date-id {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-family: system-ui, sans-serif;
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.detail-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+
+.detail-section-title {
+  font-size: 0.85rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.8rem;
+}
+
+.detail-abstract {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text-bright);
+}
+
+.detail-links {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.detail-link {
+  background: linear-gradient(135deg, var(--orange) 0%, #C44A15 100%);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 1.2rem;
+  color: var(--text-bright);
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.detail-link:hover {
+  box-shadow: var(--glow-orange);
+  transform: translateY(-1px);
+}
+
+.detail-link.secondary {
+  background: rgba(221,193,101,0.1);
+  border: 1px solid var(--border);
+  color: var(--gold);
+}
+
+.detail-link.secondary:hover {
+  border-color: var(--gold-dim);
+  box-shadow: var(--glow-gold);
+}
+
+/* Related papers in detail view */
+.related-papers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.related-paper {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.related-paper:hover {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+
+.related-paper-title {
+  font-size: 0.9rem;
+  color: var(--gold-light);
+  margin-bottom: 0.2rem;
+}
+
+.related-paper-authors {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-dim);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 6rem 2rem;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+.empty-title {
+  font-size: 1.3rem;
+  color: var(--gold);
+  margin-bottom: 0.5rem;
+}
+
+.empty-desc {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Trending / landing */
+.landing-section {
+  margin-bottom: 2.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  color: var(--gold);
+  font-weight: bold;
+}
+
+.section-badge {
+  background: rgba(229,89,28,0.15);
+  color: var(--orange);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding: 1rem;
+}
+
+.page-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: var(--text-dim);
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+
+.page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.page-info {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-family: system-ui, sans-serif;
+  padding: 0 0.5rem;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-family: system-ui, sans-serif;
+}
+
+footer a { color: var(--gold-dim); text-decoration: none; }
+footer a:hover { color: var(--gold); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  header { padding: 1rem; }
+  .header-inner { gap: 0.8rem; }
+  .logo { font-size: 1.3rem; }
+  main { padding: 0.5rem 1rem 3rem; }
+  .sort-bar { padding: 0 1rem; }
+  .paper-card { padding: 1.2rem; }
+  .paper-title { font-size: 1.05rem; }
+  .detail-content { padding: 0 1.2rem 2rem; }
+  .detail-title { font-size: 1.3rem; }
+}
+
+/* Keyboard hint */
+.kbd {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.7rem;
+  font-family: system-ui, sans-serif;
+  color: var(--text-dim);
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.paper-card { animation: fadeIn 0.3s ease forwards; }
+.paper-card:nth-child(2) { animation-delay: 0.05s; }
+.paper-card:nth-child(3) { animation-delay: 0.1s; }
+.paper-card:nth-child(4) { animation-delay: 0.15s; }
+.paper-card:nth-child(5) { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo" onclick="goHome()">arXiv <span>Reader</span></div>
+    <div class="search-container">
+      <div class="search-bar">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search papers... (quantum computing, transformer attention, etc.)" autocomplete="off">
+        <button class="search-btn" onclick="doSearch()">Search</button>
+      </div>
+    </div>
+    <div class="categories" id="categories"></div>
+  </div>
+</header>
+
+<div class="sort-bar" id="sortBar" style="display:none;">
+  <div class="result-count" id="resultCount"></div>
+  <div class="sort-options">
+    <button class="sort-btn active" data-sort="relevance" onclick="setSort('relevance')">Relevance</button>
+    <button class="sort-btn" data-sort="submittedDate" onclick="setSort('submittedDate')">Newest</button>
+    <button class="sort-btn" data-sort="lastUpdatedDate" onclick="setSort('lastUpdatedDate')">Updated</button>
+  </div>
+</div>
+
+<main id="main">
+  <div id="content"></div>
+</main>
+
+<!-- Detail panel -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-close">
+    <button class="close-btn" onclick="closeDetail()">← Back <span class="kbd">Esc</span></button>
+    <div id="detailNav" style="display:flex;gap:0.3rem;"></div>
+  </div>
+  <div class="detail-content" id="detailContent"></div>
+</div>
+
+<footer>
+  <p>arXiv Reader — a beautiful interface for <a href="https://arxiv.org" target="_blank" rel="noopener">arXiv.org</a></p>
+  <p style="margin-top:0.3rem;">Data from the arXiv API. arXiv is funded by Cornell University and operated as an independent nonprofit.</p>
+</footer>
+
+<script>
+const ARXIV_BASE = 'https://export.arxiv.org/api/query';
+let fetchMode = null; // 'direct', 'proxy-0', 'proxy-1', etc.
+
+const CORS_PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+
+async function fetchWithFallback(params) {
+  const directUrl = `${ARXIV_BASE}?${params}`;
+
+  // If we already know what works, use it
+  if (fetchMode === 'direct') {
+    const resp = await fetch(directUrl);
+    if (resp.ok) return await resp.text();
+  } else if (fetchMode && fetchMode.startsWith('proxy-')) {
+    const idx = parseInt(fetchMode.split('-')[1]);
+    const resp = await fetch(CORS_PROXIES[idx](directUrl));
+    if (resp.ok) return await resp.text();
+  }
+
+  // Discover: try direct first
+  try {
+    const resp = await fetch(directUrl);
+    if (resp.ok) {
+      const text = await resp.text();
+      if (text.includes('<feed')) { fetchMode = 'direct'; return text; }
+    }
+  } catch {}
+
+  // Try CORS proxies
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    try {
+      const url = CORS_PROXIES[i](directUrl);
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const text = await resp.text();
+        if (text.includes('<feed') || text.includes('<entry')) {
+          fetchMode = `proxy-${i}`;
+          return text;
+        }
+      }
+    } catch {}
+  }
+  throw new Error('Could not reach arXiv API. Please try refreshing the page.');
+}
+const CATEGORIES = [
+  { id: 'cs.AI', label: 'AI' },
+  { id: 'cs.LG', label: 'Machine Learning' },
+  { id: 'cs.CL', label: 'NLP' },
+  { id: 'cs.CV', label: 'Computer Vision' },
+  { id: 'physics', label: 'Physics' },
+  { id: 'math', label: 'Mathematics' },
+  { id: 'stat.ML', label: 'Statistics' },
+  { id: 'q-bio', label: 'Biology' },
+  { id: 'astro-ph', label: 'Astrophysics' },
+  { id: 'cond-mat', label: 'Condensed Matter' },
+  { id: 'quant-ph', label: 'Quantum' },
+  { id: 'hep-th', label: 'High Energy' },
+];
+
+let state = {
+  papers: [],
+  query: '',
+  category: '',
+  sort: 'relevance',
+  start: 0,
+  pageSize: 15,
+  total: 0,
+  loading: false,
+  currentPaper: null,
+  currentIndex: -1,
+};
+
+// Init categories
+const catContainer = document.getElementById('categories');
+CATEGORIES.forEach(cat => {
+  const pill = document.createElement('button');
+  pill.className = 'cat-pill';
+  pill.textContent = cat.label;
+  pill.dataset.id = cat.id;
+  pill.onclick = () => toggleCategory(cat.id);
+  catContainer.appendChild(pill);
+});
+
+// Search on Enter
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDetail();
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && document.activeElement !== document.getElementById('searchInput')) {
+    e.preventDefault();
+    document.getElementById('searchInput').focus();
+  }
+  // Arrow keys for paper navigation in detail view
+  if (state.currentPaper) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); navigatePaper(-1); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); navigatePaper(1); }
+  }
+});
+
+function toggleCategory(id) {
+  state.category = state.category === id ? '' : id;
+  document.querySelectorAll('.cat-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.id === state.category);
+  });
+  state.start = 0;
+  fetchPapers();
+}
+
+function setSort(sort) {
+  state.sort = sort;
+  state.start = 0;
+  document.querySelectorAll('.sort-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.sort === sort);
+  });
+  fetchPapers();
+}
+
+function doSearch() {
+  state.query = document.getElementById('searchInput').value.trim();
+  state.start = 0;
+  fetchPapers();
+}
+
+function goHome() {
+  state.query = '';
+  state.category = '';
+  state.start = 0;
+  document.getElementById('searchInput').value = '';
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  showLanding();
+}
+
+function buildQuery() {
+  let parts = [];
+  if (state.query) {
+    // Search in title and abstract
+    const q = state.query.replace(/[()]/g, '');
+    parts.push(`all:${q}`);
+  }
+  if (state.category) {
+    parts.push(`cat:${state.category}`);
+  }
+  return parts.join('+AND+') || 'cat:cs.AI';
+}
+
+async function fetchPapers() {
+  state.loading = true;
+  renderLoading();
+
+  const sortBy = state.sort === 'relevance' ? 'relevance' : state.sort;
+  const sortOrder = state.sort === 'relevance' ? '' : '&sortBy=' + sortBy + '&sortOrder=descending';
+  const params = `search_query=${buildQuery()}&start=${state.start}&max_results=${state.pageSize}${sortOrder}`;
+
+  try {
+    const text = await fetchWithFallback(params);
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'text/xml');
+
+    const totalEl = xml.querySelector('totalResults');
+    state.total = totalEl ? parseInt(totalEl.textContent) : 0;
+
+    const entries = xml.querySelectorAll('entry');
+    state.papers = Array.from(entries).map(parseEntry);
+
+    state.loading = false;
+    renderResults();
+    renderSortBar();
+
+    // Re-render MathJax
+    if (window.MathJax && MathJax.typesetPromise) {
+      MathJax.typesetPromise().catch(() => {});
+    }
+  } catch (err) {
+    state.loading = false;
+    renderError(err.message);
+  }
+}
+
+function parseEntry(entry) {
+  const getText = (tag) => {
+    const el = entry.querySelector(tag);
+    return el ? el.textContent.trim() : '';
+  };
+
+  const id = getText('id');
+  const arxivId = id.replace('http://arxiv.org/abs/', '').replace(/v\d+$/, '');
+
+  const authors = Array.from(entry.querySelectorAll('author')).map(a => {
+    const name = a.querySelector('name');
+    return name ? name.textContent.trim() : '';
+  });
+
+  const categories = Array.from(entry.querySelectorAll('category')).map(c => c.getAttribute('term')).filter(Boolean);
+
+  const links = Array.from(entry.querySelectorAll('link'));
+  const pdfLink = links.find(l => l.getAttribute('title') === 'pdf');
+  const absLink = links.find(l => l.getAttribute('type') === 'text/html') || links[0];
+
+  return {
+    id: arxivId,
+    title: getText('title').replace(/\s+/g, ' '),
+    authors,
+    abstract: getText('summary').replace(/\s+/g, ' '),
+    categories,
+    published: getText('published'),
+    updated: getText('updated'),
+    pdfUrl: pdfLink ? pdfLink.getAttribute('href') : `https://arxiv.org/pdf/${arxivId}`,
+    absUrl: absLink ? absLink.getAttribute('href') : `https://arxiv.org/abs/${arxivId}`,
+    primaryCategory: categories[0] || '',
+  };
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function formatAuthors(authors, max = 5) {
+  if (authors.length <= max) return authors.join(', ');
+  return authors.slice(0, max).join(', ') + ` +${authors.length - max} more`;
+}
+
+function renderLoading() {
+  document.getElementById('content').innerHTML = `
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <p>Searching arXiv...</p>
+    </div>
+  `;
+}
+
+function renderError(msg) {
+  document.getElementById('content').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">⚠</div>
+      <div class="empty-title">Something went wrong</div>
+      <div class="empty-desc">${escapeHtml(msg)}</div>
+    </div>
+  `;
+}
+
+function renderSortBar() {
+  const bar = document.getElementById('sortBar');
+  bar.style.display = state.papers.length ? 'flex' : 'none';
+  document.getElementById('resultCount').textContent =
+    `${state.total.toLocaleString()} results${state.query ? ' for "' + state.query + '"' : ''}${state.category ? ' in ' + state.category : ''}`;
+}
+
+function renderResults() {
+  if (!state.papers.length) {
+    document.getElementById('content').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📄</div>
+        <div class="empty-title">No papers found</div>
+        <div class="empty-desc">Try different keywords or browse a category above.</div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '<div class="paper-list">';
+  state.papers.forEach((p, i) => {
+    html += `
+      <div class="paper-card" onclick="openDetail(${i})">
+        <div class="paper-meta">
+          <span class="paper-category">${escapeHtml(p.primaryCategory)}</span>
+          <span class="paper-date">${formatDate(p.published)}</span>
+          <span class="paper-id">${escapeHtml(p.id)}</span>
+        </div>
+        <div class="paper-title">${escapeHtml(p.title)}</div>
+        <div class="paper-authors">${escapeHtml(formatAuthors(p.authors))}</div>
+        <div class="paper-abstract">${escapeHtml(p.abstract)}</div>
+        <div class="paper-actions">
+          <a class="paper-action-btn" href="${escapeHtml(p.pdfUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 PDF</a>
+          <a class="paper-action-btn" href="${escapeHtml(p.absUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 arXiv</a>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  // Pagination
+  const totalPages = Math.ceil(state.total / state.pageSize);
+  const currentPage = Math.floor(state.start / state.pageSize) + 1;
+
+  if (totalPages > 1) {
+    html += `
+      <div class="pagination">
+        <button class="page-btn" onclick="goPage(-1)" ${currentPage <= 1 ? 'disabled' : ''}>← Previous</button>
+        <span class="page-info">Page ${currentPage} of ${Math.min(totalPages, 667).toLocaleString()}</span>
+        <button class="page-btn" onclick="goPage(1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next →</button>
+      </div>
+    `;
+  }
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function goPage(dir) {
+  state.start += dir * state.pageSize;
+  if (state.start < 0) state.start = 0;
+  fetchPapers();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openDetail(index) {
+  const paper = state.papers[index];
+  if (!paper) return;
+  state.currentPaper = paper;
+  state.currentIndex = index;
+
+  const overlay = document.getElementById('detailOverlay');
+  const panel = document.getElementById('detailPanel');
+
+  // Nav buttons
+  document.getElementById('detailNav').innerHTML = `
+    <button class="close-btn" onclick="navigatePaper(-1)" ${index <= 0 ? 'disabled style="opacity:0.3"' : ''}>‹</button>
+    <button class="close-btn" onclick="navigatePaper(1)" ${index >= state.papers.length - 1 ? 'disabled style="opacity:0.3"' : ''}>›</button>
+  `;
+
+  const allCategories = paper.categories.map(c => `<span class="detail-category">${escapeHtml(c)}</span>`).join(' ');
+
+  let authorsHtml = paper.authors.map(a =>
+    `<a href="javascript:void(0)" onclick="searchAuthor('${escapeHtml(a.replace(/'/g, "\\'"))}')" style="color:var(--text);text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px;">${escapeHtml(a)}</a>`
+  ).join(', ');
+
+  document.getElementById('detailContent').innerHTML = `
+    ${allCategories}
+    <h1 class="detail-title">${escapeHtml(paper.title)}</h1>
+    <div class="detail-authors">${authorsHtml}</div>
+    <div class="detail-date-id">
+      <span>Published: ${formatDate(paper.published)}</span>
+      <span>Updated: ${formatDate(paper.updated)}</span>
+      <span style="font-family:'Courier New',monospace;color:var(--gold-dim)">${escapeHtml(paper.id)}</span>
+    </div>
+    <div class="detail-links">
+      <a class="detail-link" href="${escapeHtml(paper.pdfUrl)}" target="_blank" rel="noopener">📄 Read PDF</a>
+      <a class="detail-link secondary" href="${escapeHtml(paper.absUrl)}" target="_blank" rel="noopener">🔗 View on arXiv</a>
+      <a class="detail-link secondary" href="https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}" target="_blank" rel="noopener">🎓 Google Scholar</a>
+    </div>
+    <hr class="detail-divider">
+    <div class="detail-section-title">Abstract</div>
+    <div class="detail-abstract">${escapeHtml(paper.abstract)}</div>
+    <hr class="detail-divider">
+    <div class="detail-section-title">Related Papers</div>
+    <div class="related-papers" id="relatedPapers">
+      <div class="loading" style="padding:1rem"><div class="loading-spinner"></div><p style="font-size:0.85rem">Finding related papers...</p></div>
+    </div>
+  `;
+
+  overlay.classList.add('visible');
+  requestAnimationFrame(() => panel.classList.add('open'));
+  document.body.style.overflow = 'hidden';
+
+  // Re-render MathJax in detail
+  if (window.MathJax && MathJax.typesetPromise) {
+    MathJax.typesetPromise([document.getElementById('detailContent')]).catch(() => {});
+  }
+
+  // Fetch related papers
+  fetchRelated(paper);
+}
+
+async function fetchRelated(paper) {
+  try {
+    // Search using first few words of title
+    const words = paper.title.split(/\s+/).slice(0, 5).join(' ').replace(/[()]/g, '');
+    const catQ = paper.primaryCategory ? `+AND+cat:${paper.primaryCategory}` : '';
+    const params = `search_query=all:${encodeURIComponent(words)}${catQ}&start=0&max_results=5&sortBy=relevance`;
+
+    const text = await fetchWithFallback(params);
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'text/xml');
+    const entries = Array.from(xml.querySelectorAll('entry')).map(parseEntry).filter(p => p.id !== paper.id).slice(0, 4);
+
+    const container = document.getElementById('relatedPapers');
+    if (!container) return;
+
+    if (!entries.length) {
+      container.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">No related papers found.</p>';
+      return;
+    }
+
+    container.innerHTML = entries.map(p => `
+      <div class="related-paper" onclick="searchAndOpen('${escapeHtml(p.id)}')">
+        <div class="related-paper-title">${escapeHtml(p.title)}</div>
+        <div class="related-paper-authors">${escapeHtml(formatAuthors(p.authors, 3))} · ${formatDate(p.published)}</div>
+      </div>
+    `).join('');
+
+    if (window.MathJax && MathJax.typesetPromise) {
+      MathJax.typesetPromise([container]).catch(() => {});
+    }
+  } catch {
+    const container = document.getElementById('relatedPapers');
+    if (container) container.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">Could not load related papers.</p>';
+  }
+}
+
+function searchAndOpen(id) {
+  closeDetail();
+  document.getElementById('searchInput').value = id;
+  state.query = id;
+  state.start = 0;
+  fetchPapers();
+}
+
+function searchAuthor(name) {
+  closeDetail();
+  document.getElementById('searchInput').value = `au:"${name}"`;
+  state.query = `au:"${name}"`;
+  state.start = 0;
+  fetchPapers();
+}
+
+function navigatePaper(dir) {
+  const newIndex = state.currentIndex + dir;
+  if (newIndex >= 0 && newIndex < state.papers.length) {
+    openDetail(newIndex);
+  }
+}
+
+function closeDetail() {
+  const panel = document.getElementById('detailPanel');
+  const overlay = document.getElementById('detailOverlay');
+  panel.classList.remove('open');
+  setTimeout(() => {
+    overlay.classList.remove('visible');
+    document.body.style.overflow = '';
+    state.currentPaper = null;
+    state.currentIndex = -1;
+  }, 350);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Landing page — show trending papers from popular categories
+function showLanding() {
+  document.getElementById('sortBar').style.display = 'none';
+  document.getElementById('content').innerHTML = `
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading recent papers...</p>
+    </div>
+  `;
+
+  const landingCategories = [
+    { id: 'cs.AI', label: 'Artificial Intelligence', emoji: '🤖' },
+    { id: 'cs.LG', label: 'Machine Learning', emoji: '🧠' },
+    { id: 'quant-ph', label: 'Quantum Physics', emoji: '⚛' },
+  ];
+
+  Promise.all(landingCategories.map(async cat => {
+    const params = `search_query=cat:${cat.id}&start=0&max_results=5&sortBy=submittedDate&sortOrder=descending`;
+    const text = await fetchWithFallback(params);
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'text/xml');
+    return {
+      ...cat,
+      papers: Array.from(xml.querySelectorAll('entry')).map(parseEntry),
+    };
+  })).then(sections => {
+    let html = '';
+    sections.forEach(section => {
+      // Store these for detail view navigation
+      html += `<div class="landing-section">`;
+      html += `<div class="section-header">
+        <span style="font-size:1.3rem">${section.emoji}</span>
+        <span class="section-title">${section.label}</span>
+        <span class="section-badge">Latest</span>
+        <button class="cat-pill" onclick="toggleCategory('${section.id}')" style="margin-left:auto">Browse all →</button>
+      </div>`;
+      html += '<div class="paper-list">';
+      section.papers.forEach((p, i) => {
+        // Add to global state for detail viewing
+        const globalIndex = state.papers.length;
+        state.papers.push(p);
+        html += `
+          <div class="paper-card" onclick="openDetail(${globalIndex})">
+            <div class="paper-meta">
+              <span class="paper-category">${escapeHtml(p.primaryCategory)}</span>
+              <span class="paper-date">${formatDate(p.published)}</span>
+              <span class="paper-id">${escapeHtml(p.id)}</span>
+            </div>
+            <div class="paper-title">${escapeHtml(p.title)}</div>
+            <div class="paper-authors">${escapeHtml(formatAuthors(p.authors))}</div>
+            <div class="paper-abstract">${escapeHtml(p.abstract)}</div>
+            <div class="paper-actions">
+              <a class="paper-action-btn" href="${escapeHtml(p.pdfUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📄 PDF</a>
+              <a class="paper-action-btn" href="${escapeHtml(p.absUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 arXiv</a>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div></div>';
+    });
+
+    html += `
+      <div style="text-align:center;padding:2rem;color:var(--text-dim);font-size:0.9rem;">
+        <p>Press <span class="kbd">/</span> to search · Click a category to browse · <span class="kbd">Esc</span> to close papers</p>
+      </div>
+    `;
+
+    document.getElementById('content').innerHTML = html;
+
+    if (window.MathJax && MathJax.typesetPromise) {
+      MathJax.typesetPromise().catch(() => {});
+    }
+  }).catch(err => {
+    renderError('Failed to load papers: ' + err.message);
+  });
+}
+
+// Start
+state.papers = [];
+showLanding();
+</script>
+
+</body>
+</html>
